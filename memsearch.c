@@ -43,7 +43,7 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
 }
 
 #ifndef MAIN_TEST_FN
-#define MAIN_TEST_FN test
+#define MAIN_TEST_FN memsearch_test
 #endif
 int MAIN_TEST_FN() {
   const char* hay = "The testa";
