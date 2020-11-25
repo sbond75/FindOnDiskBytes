@@ -5,9 +5,12 @@
 #include "memsearch.h"
 
 const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, int* out_memSearchExitReason, const char** needleNext) {
-  size_t needleLen = strlen(needle);
+  size_t needleLen;
   if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_NoPartsFound;
-  if (needleNext) *needleNext = needle;
+  if (needleNext) {
+    needle = *needleNext;
+  }
+  needleLen = strlen(needle);
   if (needleLen == 0) {
     if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_Undefined;
     return NULL;
@@ -24,7 +27,7 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
 	  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_NeedleRanOutAtEnd;
 	  if (needleNext) *needleNext = needlePtr;
 	  found = false;
-	  break;
+	  return NULL;
 	}
 	c = *cPtr;
 	if (c != needleC) {
@@ -34,11 +37,13 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
       }
       if (found) {
 	  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_Found;
+	  if (needleNext) *needleNext = needle;
 	return cPtr - needleLen;
       }
     }
   }
   // Returns NULL if not found
+  if (needleNext) *needleNext = needle;
   return NULL;
 }
 

@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "memsearch.h"
+#include "hexdump.h"
 
 const char* foundStr = "Found at position %ju from the beginning of the file (0-based)\n";
 
@@ -24,7 +25,8 @@ int main(int argc, char *argv[])
   unsigned long long updatesOften = gibibytes * 1024 * 1024 * 1024;
   unsigned long long initialOffset = 0;
   if (argc <= 2) {
-    printf("Usage: %s <file or disk path> <needle> [give updates this often, or 0 for default] [initial offset]\nPass 0 to skip any argument besides the first one.\n", argv[0]);
+    printf("Usage: %s <file or disk path> <needle> [give updates this often, or 0 for default] [initial offset]\nPass 0 to skip any argument besides the first one.\n"
+	   "\nFor issues on macOS with the file or disk path given, run `diskutil list` and ensure you are not using a \"synthesized\" disk (it will have this next to the name if you are); for example, if /dev/rdisk1 (with or without the \"r\" it is the same disk just cached differently) is synthesized, then it may be that it represents disk0s4 instead (a partition of disk0), so use that, or rdisk0s4.\n", argv[0]);
     return 0;
   }
   filePath = argv[1];
@@ -42,22 +44,23 @@ int main(int argc, char *argv[])
   char buf[BUF_SIZE];
   int num = 0;
   int fd = open(filePath, O_RDONLY);
+  if (fd == -1) {
+    perror("open");
+    return 1;
+  }
   if (initialOffset) {
     off_t currentOffset = lseek(fd, initialOffset, SEEK_SET);
     if (currentOffset == -1) { // Error
-      perror("Error setting given initial offset");
+      perror("lseek: Error setting given initial offset");
       return 1;
     }
   }
-  if (fd == -1) {
-    perror(NULL);
-    return 1;
-  }
   uintmax_t counter = 0;
   const char* needleNext = needle;
-  while ((num = read(fd, buf, sizeof(buf)))) {
+  printf("%d\n", fd);
+  while ((num = read(fd, buf, BUF_SIZE))) {
     if (num == -1) {
-      perror(NULL);
+      perror("read");
       close(fd);
       return 1;
     }
@@ -83,10 +86,10 @@ int main(int argc, char *argv[])
     /* } */
 
     int reason;
-    offset = memsearch_ext(offset, num, needleNext, &reason, &needleNext);
+    offset = memsearch_ext(offset, num, needle, &reason, &needleNext);
     if (reason == kMemSearchExitReason_Found) {
       // Found it
-      printf("%s %td %llu\n", needleNext != needle ? "true" : "false", needleNext - needle, initialOffset);
+      printf("%s %td %llu at counter %ju\n", needleNext != needle ? "true" : "false", needleNext - needle, initialOffset, counter);
       uintmax_t currentOffset = counter + (offset - buf) + (needleNext != needle ? (initialOffset - (needleNext - needle)) : initialOffset);
       /* off_t currentOffset = lseek(fd, 0, SEEK_CUR); /\* Get current offset.*\/ */
       /* if (currentOffset == -1) { /\* Error *\/				 */
@@ -94,7 +97,11 @@ int main(int argc, char *argv[])
       /* 	uintmax_t found = counter + offset; */
       /* 	printf("Recovering from error: Found string but couldn't get the offset. Using other counter variable, which is: %ju\n", found);  */
       /* }									 */
-      printf(foundStr, currentOffset);					
+      printf(foundStr, currentOffset);
+
+      printf("In this hexdump at position %ju:\n", currentOffset - counter);
+      DumpHex(buf, num);
+      
       close(fd); return 0;
     }
     
