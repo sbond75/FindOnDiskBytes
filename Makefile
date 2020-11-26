@@ -1,4 +1,4 @@
-CFLAGS = -g3 -O0
+CFLAGS = -O3 #-g3 -O0
 
 all: main.o memsearch.o hexdump.o
 	gcc $(CFLAGS) main.o memsearch.o hexdump.o -o main

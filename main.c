@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
       printf("In this hexdump at position %ju:\n", currentOffset - counter);
       DumpHex(buf, num);
       
-      close(fd); return 0;
+      //close(fd); return 0;
     }
     
     counter += num;
