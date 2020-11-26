@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
   if (argc >= 5) {
     initialOffset = strtoull(argv[4], NULL, 0);
   }
-#define BUF_SIZE 2048
+#define BUF_SIZE 8192 //2048
   char buf[BUF_SIZE];
   int num = 0;
   int fd = open(filePath, O_RDONLY);
