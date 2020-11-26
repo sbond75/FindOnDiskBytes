@@ -7,6 +7,7 @@
 const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, int* out_memSearchExitReason, const char** needleNext) {
   size_t needleLen;
   if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_NoPartsFound;
+  const char* needleOrig = needle;
   if (needleNext) {
     needle = *needleNext;
   }
@@ -37,13 +38,13 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
       }
       if (found) {
 	  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_Found;
-	  if (needleNext) *needleNext = needle;
+	  if (needleNext) *needleNext = needleOrig;
 	return cPtr - needleLen;
       }
     }
   }
   // Returns NULL if not found
-  if (needleNext) *needleNext = needle;
+  if (needleNext) *needleNext = needleOrig;
   return NULL;
 }
 
