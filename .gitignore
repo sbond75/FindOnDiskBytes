@@ -1,0 +1,5 @@
+/main
+/tests
+/a.out
+*.dSYM
+*.o

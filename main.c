@@ -7,9 +7,12 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
+#include <assert.h>
 
 #include "memsearch.h"
 #include "hexdump.h"
+#include "int_utils.h"
 
 const char* foundStr = "Found at position %ju from the beginning of the file (0-based)\n";
 
@@ -49,15 +52,34 @@ int main(int argc, char *argv[])
     return 1;
   }
   if (initialOffset) {
-    off_t currentOffset = lseek(fd, initialOffset, SEEK_SET);
-    if (currentOffset == -1) { // Error
-      perror("lseek: Error setting given initial offset");
-      return 1;
+    // (Need to do a few seeks if initialOffset > OFF_T_MAX.)
+    //printf("%jd\n", (intmax_t)OFF_T_MAX);
+    off_t initial = initialOffset > OFF_T_MAX ? OFF_T_MAX : initialOffset;
+    off_t res;
+    bool exit = false;
+    for (unsigned long long i = initial; i < initialOffset + OFF_T_MAX; i += OFF_T_MAX) {
+      if (i > initialOffset) {
+	res = i - initialOffset;
+	exit = true;
+      }
+      else {
+	res = (i == initial) ? initial : OFF_T_MAX;
+      }
+
+      printf("lseek to %jd\n", (intmax_t)res);
+      off_t currentOffset = lseek(fd, res, i == initial ? SEEK_SET : SEEK_CUR);
+      if (currentOffset == -1) { // Error
+	printf("lseek: Error setting given initial offset: %s\n", strerror(errno));
+	return 1;
+      }
+      
+      if (exit) break;
     }
   }
   uintmax_t counter = 0;
   const char* needleNext = needle;
   printf("%d\n", fd);
+  bool foundAny = false; // Assume false.
   while ((num = read(fd, buf, BUF_SIZE))) {
     if (num == -1) {
       perror("read");
@@ -89,6 +111,7 @@ int main(int argc, char *argv[])
     offset = memsearch_ext(offset, num, needle, &reason, &needleNext);
     if (reason == kMemSearchExitReason_Found) {
       // Found it
+      foundAny = true;
       printf("%s %td %llu at counter %ju\n", needleNext != needle ? "true" : "false", needleNext - needle, initialOffset, counter);
       uintmax_t currentOffset = counter + (offset - buf) + (needleNext != needle ? (initialOffset - (needleNext - needle)) : initialOffset);
       /* off_t currentOffset = lseek(fd, 0, SEEK_CUR); /\* Get current offset.*\/ */
@@ -99,7 +122,8 @@ int main(int argc, char *argv[])
       /* }									 */
       printf(foundStr, currentOffset);
 
-      printf("In this hexdump at position %ju:\n", currentOffset - counter);
+      static_assert(sizeof(uintmax_t) >= sizeof(unsigned long long), "This should be true");
+      printf("In this hexdump at position %ju:\n", (uintmax_t)(currentOffset - counter - initialOffset));
       DumpHex(buf, num);
       
       //close(fd); return 0;
@@ -124,7 +148,9 @@ int main(int argc, char *argv[])
     }
   }
 
-  puts("Not found");
+  if (!foundAny) {
+    puts("Not found");
+  }
   close(fd);
 }
 

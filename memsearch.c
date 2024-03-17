@@ -33,6 +33,7 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
 	c = *cPtr;
 	if (c != needleC) {
 	  if (needleNext) *needleNext = needleOrig;
+	  needle = needleOrig;
 	  found = false;
 	  break;
 	}
