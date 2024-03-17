@@ -1,4 +1,4 @@
-CFLAGS = -O3 #-g3 -O0
+CFLAGS = -g3 -O3 #-g3 -O0
 
 all: main.o memsearch.o hexdump.o
 	gcc $(CFLAGS) main.o memsearch.o hexdump.o -o main
@@ -13,7 +13,7 @@ hexdump.o: hexdump.c
 	gcc $(CFLAGS) -c hexdump.c
 
 tests: memsearch.c
-	gcc -DMAIN_TEST_FN=main memsearch.c -o tests
+	gcc -O0 -g3 -DMAIN_TEST_FN=main memsearch.c -o tests
 
 .PHONY: clean
 clean:

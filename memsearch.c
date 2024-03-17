@@ -4,50 +4,118 @@
 
 #include "memsearch.h"
 
-const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, int* out_memSearchExitReason, const char** needleNext) {
-  size_t needleLen;
-  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_NoPartsFound;
-  const char* needleOrig = needle;
-  if (needleNext) {
-    needle = *needleNext;
-  }
-  needleLen = strlen(needle);
-  if (needleLen == 0) {
-    if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_Undefined;
-    return NULL;
-  }
-  for (const char* cPtr = haystack; cPtr < haystack + haystackSize; cPtr++) {
-    char c = *cPtr;
-    // size_t i = cPtr - haystack;
-    if (c == needle[0]) {
-      if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_SomePartsFound;
-      bool found = true; // Assume true.
-      for (const char* needlePtr = needle; needlePtr < needle + needleLen; needlePtr++, cPtr++) {
-	char needleC = *needlePtr;
-	if (cPtr >= haystack + haystackSize) {
-	  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_NeedleRanOutAtEnd;
-	  if (needleNext) *needleNext = needlePtr;
-	  found = false;
-	  return NULL;
-	}
-	c = *cPtr;
-	if (c != needleC) {
-	  if (needleNext) *needleNext = needleOrig;
-	  needle = needleOrig;
-	  found = false;
-	  break;
-	}
-      }
-      if (found) {
-	  if (out_memSearchExitReason) *out_memSearchExitReason = kMemSearchExitReason_Found;
-	  if (needleNext) *needleNext = needleOrig;
-	return cPtr - needleLen;
+// haystack: abcaabc
+// needle: aabc
+
+// haystacks: ca|ab|c
+// needle: aabc
+
+// haystacks: ca|ab|aa|bc
+// needle: aabc
+
+const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, size_t needleLen, int* out_memSearchExitReason, const char** needleNext) {
+  const char* hayPtr = haystack;
+  const char* needlePtr = needle;
+  size_t i = 0;
+  size_t matchedCharCount = 0;
+  size_t matchedCharCount_needleNext = (needleNext && *needleNext) ? (*needleNext - needle) : 0;
+  for (; i < haystackSize && i < needleLen; i++, hayPtr++, needlePtr++) {
+    const char cHay = *hayPtr;
+    const char cNeedle = *needlePtr;
+    if (cHay == cNeedle) {
+      // Found a possible match. Keep scanning for more; increment matchedCharCount
+      matchedCharCount++;
+    }
+    else {
+      // No match:
+      // Stay at the current position in the needle
+      i -= matchedCharCount + 1;
+      
+      // Reset matchedCharCount to 0
+      needlePtr = needle;
+      matchedCharCount = 0;
+      
+      // Stay at the current position in the needle
+      needlePtr--;
+    }
+    
+    // Check for matches with `needleNext`:
+    if ((needleNext && *needleNext) && matchedCharCount_needleNext < needleLen && **needleNext == cHay) {
+      // Found a possible match.
+      matchedCharCount_needleNext++;
+      (*needleNext)++;
+    }
+    else {
+      // No match
+      matchedCharCount_needleNext = 0;
+      if (needleNext) {
+      	*needleNext = NULL;
       }
     }
+    
+    // If we reached the end of the needle, reset needleNext and return the match:
+    if (matchedCharCount == needleLen || matchedCharCount_needleNext == needleLen) {
+      if (needleNext) {
+      	*needleNext = NULL;
+      }
+      if (out_memSearchExitReason) {
+        *out_memSearchExitReason = kMemSearchExitReason_Found;
+      }
+      return hayPtr - i;
+    }
+    
+    // If we reached the end of the hay, set needleNext and return the partial match:
+    if (hayPtr == haystack + haystackSize - 1) {
+      if (needleNext) {
+      	*needleNext = needlePtr + 1;
+      }
+      if (out_memSearchExitReason) {
+        *out_memSearchExitReason = kMemSearchExitReason_SomePartsFound;
+      }
+      return hayPtr - i;
+    }
   }
-  // Returns NULL if not found
-  if (needleNext) *needleNext = needleOrig;
-  return NULL;
+  
+  // If we reached the end with matchedCharCount > 0, then we could have more in the next call to memsearch_ext, so save a "continuation":
+  if (needleNext && matchedCharCount > 0) {
+    *needleNext = needlePtr;
+  }
+  // If we had needle matches, these are also saved, with higher priority than the above:
+  if (needleNext && matchedCharCount_needleNext > 0) {
+    *needleNext = needlePtr;
+  }
+  
+  if (out_memSearchExitReason) {
+    *out_memSearchExitReason = hayPtr > (haystack + haystackSize - 1) ? kMemSearchExitReason_NoPartsFound : kMemSearchExitReason_NeedleRanOutAtEnd;
+  }
+  return hayPtr - ((needleNext && *needleNext) ? matchedCharCount_needleNext : matchedCharCount);
+}
+
+const char* memsearch_reasonToString(int reason) {
+  switch (reason) {
+  case kMemSearchExitReason_Undefined:
+    return "undefined";
+  case kMemSearchExitReason_NeedleRanOutAtEnd:
+    return "needle ran out at end";
+  case kMemSearchExitReason_NoPartsFound:
+    return "no parts found";
+  case kMemSearchExitReason_SomePartsFound:
+    return "some parts found";
+  case kMemSearchExitReason_Found:
+    return "found";
+  default:
+    return "unknown";
+  }
+}
+
+// https://stackoverflow.com/questions/70192113/how-to-call-macro-that-uses-token-pasting
+#define STR(x) #x
+#define XSTR(x) STR(x)
+
+#define ensure(check) { \
+  if (!(check)) { \
+    puts("Expected: " XSTR(check) "."); \
+  } \
 }
 
 #ifndef MAIN_TEST_FN
@@ -57,19 +125,37 @@ int MAIN_TEST_FN() {
   const char* hay = "The testa";
   int reason;
   const char* needleNext;
-  puts(memsearch_ext(hay, strlen(hay), "e", &reason, &needleNext));
-  printf("Reason: %d\n\n", reason);
+  const char* res = memsearch_ext(hay, strlen(hay), "e", 1, &reason, &needleNext);
+  #define putsN(x) puts(x == NULL ? "null" : x)
+  putsN(res);
+  printf("Reason: %s\n", memsearch_reasonToString(reason));
+  ensure(reason == kMemSearchExitReason_Found);
+  ensure(strcmp(res, "e testa") == 0);
+  printf("\n");
   
-  puts(memsearch_ext(hay, strlen(hay), "ta", &reason, &needleNext));
-  printf("Reason: %d\n\n", reason);
+  res = memsearch_ext(hay, strlen(hay), "ta", 2, &reason, &needleNext);
+  putsN(res);
+  printf("Reason: %s\n", memsearch_reasonToString(reason));
+  ensure(reason == kMemSearchExitReason_Found);
+  ensure(strcmp(res, "ta") == 0);
+  printf("\n");
   
-  puts(memsearch_ext(hay, strlen(hay), "tad", &reason, &needleNext));
-  printf("Reason: %d\n", reason);
-  printf("Needle next: %s\n\n", needleNext);
+  const char* needle = "tad";
+  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+  putsN(res);
+  printf("Reason: %s\n", memsearch_reasonToString(reason));
+  printf("Needle next: %s\n", needleNext);
+  ensure(reason == kMemSearchExitReason_SomePartsFound);
+  ensure(strcmp(res, "ta") == 0);
+  printf("\n");
   
-  puts(memsearch_ext(hay, strlen(hay), "testar", &reason, &needleNext));
-  printf("Reason: %d\n", reason);
-  printf("Needle next: %s\n\n", needleNext);
+  res = memsearch_ext(hay, strlen(hay), "testar", 6, &reason, &needleNext);
+  putsN(res);
+  printf("Reason: %s\n", memsearch_reasonToString(reason));
+  printf("Needle next: %s\n", needleNext);
+  ensure(reason == kMemSearchExitReason_SomePartsFound);
+  ensure(strcmp(res, "testa") == 0);
+  printf("\n");
   
   return 0;
 }

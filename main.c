@@ -19,6 +19,7 @@ const char* foundStr = "Found at position %ju from the beginning of the file (0-
 void main_test();
 
 void* buf1 = NULL;
+size_t needleLen;
 void freeBuf1() {
   free(buf1);
 }
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
     printf("Usage: %s <file or disk path> <needle, or empty string -- if empty, provide needle on stdin (useful for needles that contain null bytes)> [give updates this often, or 0 for default] [initial offset]\nPass 0 to skip any argument besides the first one.\n"
 	   "\nFor issues on macOS with the file or disk path given, run `diskutil list` and ensure you are not using a \"synthesized\" disk (it will have this next to the name if you are); for example, if /dev/rdisk1 (with or without the \"r\" it is the same disk just cached differently) is synthesized, then it may be that it represents disk0s4 instead (a partition of disk0), so use that, or rdisk0s4.\n"
 	   "\nUsage examples:\n"
-	   "    python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' ce24b9a2200000001d7798f4bafa6213 | sudo ./main /dev/sda '' 0 $((4269688830*512))   # Finds the hex sequence ce24b9a2200000001d7798f4bafa6213 starting the search at byte 4269688830*512 (4269688830 is in sectors and assumes 512-byte sectors).\n", argv[0]);
+	   "    python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' ce24b9a2200000001d7798f4bafa6213 | sudo ./main /dev/sda '' $((1024*1024*1024)) $((4269688830*512))   # Finds the hex sequence ce24b9a2200000001d7798f4bafa6213 starting the search at byte 4269688830*512 (4269688830 is in sectors and assumes 512-byte sectors). It prints an update message for every gibibyte that is processed via `$((1024*1024*1024))` which is a gibibyte.\n", argv[0]);
     return 0;
   }
   filePath = argv[1];
@@ -76,6 +77,10 @@ int main(int argc, char *argv[])
       	needle = buf;
       	buf1 = buf;
       	atexit(freeBuf1);
+      	needleLen = s;
+  }
+  else {
+  	needleLen = strlen(needle);
   }
   
   if (argc >= 4) {
@@ -152,7 +157,7 @@ int main(int argc, char *argv[])
     /* } */
 
     int reason;
-    offset = memsearch_ext(offset, num, needle, &reason, &needleNext);
+    offset = memsearch_ext(offset, num, needle, needleLen, &reason, &needleNext);
     if (reason == kMemSearchExitReason_Found) {
       // Found it
       foundAny = true;

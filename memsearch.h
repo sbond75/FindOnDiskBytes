@@ -12,10 +12,13 @@ enum MemSearchExitReason {
 };
 
 // Extended version of `memsearch`.
-extern const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, int* out_memSearchExitReason, const char** needleNext);
+// Call and if it returns Found, re-run with the return value as the haystack (and subtract haystackSize by `(retval - haystack)`) until it returns needle ran out or no parts found.
+extern const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, size_t needleLen, int* out_memSearchExitReason, const char** needleNext);
 
 // strstr but can handle haystacks that aren't limited to null termination. Useful when your string
 // can indeed contain null terminators out in the middle of it.
-inline const char* memsearch(const char* haystack, size_t haystackSize, const char* needle) {
-  return memsearch_ext(haystack, haystackSize, needle, NULL, NULL);
+inline const char* memsearch(const char* haystack, size_t haystackSize, const char* needle, size_t needleLen) {
+  return memsearch_ext(haystack, haystackSize, needle, needleLen, NULL, NULL);
 }
+
+extern const char* memsearch_reasonToString(int reason);
