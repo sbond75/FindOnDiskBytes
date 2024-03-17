@@ -18,6 +18,11 @@ const char* foundStr = "Found at position %ju from the beginning of the file (0-
 
 void main_test();
 
+void* buf1 = NULL;
+void freeBuf1() {
+  free(buf1);
+}
+
 int main(int argc, char *argv[])
 {
   // main_test();
@@ -28,12 +33,51 @@ int main(int argc, char *argv[])
   unsigned long long updatesOften = gibibytes * 1024 * 1024 * 1024;
   unsigned long long initialOffset = 0;
   if (argc <= 2) {
-    printf("Usage: %s <file or disk path> <needle> [give updates this often, or 0 for default] [initial offset]\nPass 0 to skip any argument besides the first one.\n"
-	   "\nFor issues on macOS with the file or disk path given, run `diskutil list` and ensure you are not using a \"synthesized\" disk (it will have this next to the name if you are); for example, if /dev/rdisk1 (with or without the \"r\" it is the same disk just cached differently) is synthesized, then it may be that it represents disk0s4 instead (a partition of disk0), so use that, or rdisk0s4.\n", argv[0]);
+    printf("Usage: %s <file or disk path> <needle, or empty string -- if empty, provide needle on stdin (useful for needles that contain null bytes)> [give updates this often, or 0 for default] [initial offset]\nPass 0 to skip any argument besides the first one.\n"
+	   "\nFor issues on macOS with the file or disk path given, run `diskutil list` and ensure you are not using a \"synthesized\" disk (it will have this next to the name if you are); for example, if /dev/rdisk1 (with or without the \"r\" it is the same disk just cached differently) is synthesized, then it may be that it represents disk0s4 instead (a partition of disk0), so use that, or rdisk0s4.\n"
+	   "\nUsage examples:\n"
+	   "    python3 -c 'import sys; sys.stdout.buffer.write(bytes.fromhex(sys.argv[1]))' ce24b9a2200000001d7798f4bafa6213 | sudo ./main /dev/sda '' 0 $((4269688830*512))   # Finds the hex sequence ce24b9a2200000001d7798f4bafa6213 starting the search at byte 4269688830*512 (4269688830 is in sectors and assumes 512-byte sectors).\n", argv[0]);
     return 0;
   }
   filePath = argv[1];
   const char* needle = argv[2];
+  
+  // Read bytes from stdin if `needle` is empty
+  if (strcmp(needle, "") == 0) {
+  	// Based on https://stackoverflow.com/questions/2496668/how-to-read-the-standard-input-into-string-variable-until-eof-in-c
+	int    c;
+	size_t s = 0;
+	size_t bufSize = 1024;
+	char* buf = (char*)malloc(sizeof(char) * bufSize);
+	if (buf == NULL) {
+	  printf("Failed to allocate memory for %zu byte(s). Exiting.\n", bufSize);
+	  return 1;
+	}
+
+	while ((c = getchar()) != EOF)
+	{
+	  if (s >= bufSize) {
+	    // Realloc bigger buffer
+	    const size_t newSize = bufSize * 2;
+	    buf = realloc(buf, newSize);
+	    if (buf == NULL) {
+	    	printf("Failed to allocate memory for %zu byte(s). Exiting.\n", newSize);
+	    	return 1;
+	    }
+	    bufSize = newSize;
+	  }
+	  buf[s] = c;
+	  s++;
+	}
+
+	printf("Read %zu byte(s) from stdin:\n", s);
+      	DumpHex(buf, s);
+      	
+      	needle = buf;
+      	buf1 = buf;
+      	atexit(freeBuf1);
+  }
+  
   if (argc >= 4) {
     unsigned long long res = strtoull(argv[3], NULL, 0);
     if (res != 0) {
