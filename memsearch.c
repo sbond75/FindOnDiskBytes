@@ -245,13 +245,144 @@ int MAIN_TEST_FN() {
 	  printf("\n");
   }
   
-  // Now try the most advanced form: reading a block and then continuing onto the next one:
+  // Like the above but with longer needle string:
+  {
+  	  hay = "The ultimate teestimaa 1ee2imatetimate";
+  	  
+  	  needle = "timate";
+	  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "timate teestimaa 1ee2imatetimate") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "timate") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_NoPartsFound);
+	  ensure(strcmp(res, "") == 0);
+	  printf("\n");
+  }
+  
+  // Now try reading between blocks but not continuing onto the next one:
+  {
+  	  const char* block1 = "The ultimate teestim";
+  	  const char* block2 = "aa 1ee2imatetimate";
+  	  
+  	  hay = block1;
+  	  needle = "timate";
+	  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "timate teestim") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_SomePartsFound);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "tim") == 0);
+	  ensure(strcmp(needleNext, "ate") == 0);
+	  printf("\n");
+	  
+	  /*res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_SomePartsFound);
+	  ensure(strcmp(res, "") == 0);
+	  printf("\n");*/
+	  
+	  hay = block2;
+	  needleNext = NULL;
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "timate") == 0);
+	  ensure(needleNext == NULL);
+	  printf("\n");
+  }
+  
+  // Now try the most advanced form: reading between blocks and then continuing onto the next one:
+  {
+  	  const char* block1 = "The ultimate teestim";
+  	  const char* block2 = "aa 1ee2imatetimate";
+  	  
+  	  hay = block1;
+  	  needle = "tima";
+	  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "timate teestim") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_SomePartsFound);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "tim") == 0);
+	  ensure(strcmp(needleNext, "a") == 0);
+	  printf("\n");
+	  
+	  /*res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_SomePartsFound);
+	  ensure(strcmp(res, "") == 0);
+	  printf("\n");*/
+	  
+	  hay = block2;
+	  needleNext = NULL;
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "aa 1ee2imatetimate") == 0);
+	  ensure(needleNext == NULL);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "timate") == 0);
+	  ensure(needleNext == NULL);
+	  printf("\n");
+  }
   
   if (testsFailed == 0) {
     puts("All tests passed.");
   }
   else {
     printf("%zu test(s) failed.\n", testsFailed);
+    return 2;
   }
   return 0;
 }
