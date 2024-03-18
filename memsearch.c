@@ -66,13 +66,26 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
     
     // If we reached the end of the hay, set needleNext and return the partial match:
     if (hayPtr == haystack + haystackSize - 1) {
-      if (needleNext) {
-      	*needleNext = needlePtr + 1;
+      if ((needlePtr + 1) >= needlePtr + needleLen) {
+        // Needle exhausted but we're also at the end of the hay
+        if (needleNext) {
+          *needleNext = NULL;
+        }
+        if (out_memSearchExitReason) {
+	  *out_memSearchExitReason = kMemSearchExitReason_NoPartsFound;
+        }
+        // This will return one-past the end of the string (if the string is null terminated this is the null terminator's address)
+      	return hayPtr - i;
       }
-      if (out_memSearchExitReason) {
-        *out_memSearchExitReason = kMemSearchExitReason_SomePartsFound;
+      else {
+        if (needleNext) {
+          *needleNext = needlePtr + 1;
+        }
+        if (out_memSearchExitReason) {
+	  *out_memSearchExitReason = kMemSearchExitReason_SomePartsFound;
+        }
+      	return hayPtr - i;
       }
-      return hayPtr - i;
     }
   }
   
@@ -112,9 +125,11 @@ const char* memsearch_reasonToString(int reason) {
 #define STR(x) #x
 #define XSTR(x) STR(x)
 
+size_t testsFailed;
 #define ensure(check) { \
   if (!(check)) { \
     puts("Expected: " XSTR(check) "."); \
+    testsFailed++; \
   } \
 }
 
@@ -122,6 +137,8 @@ const char* memsearch_reasonToString(int reason) {
 #define MAIN_TEST_FN memsearch_test
 #endif
 int MAIN_TEST_FN() {
+  testsFailed = 0; // Assume 0.
+  
   const char* hay = "The testa";
   int reason;
   const char* needleNext;
@@ -157,5 +174,40 @@ int MAIN_TEST_FN() {
   ensure(strcmp(res, "testa") == 0);
   printf("\n");
   
+  // The above is single-call tests, fairly basic. Now to try calling again repeatedly to find all matches:
+  {
+  	  needle = "e";
+	  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "e testa") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "esta") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_NoPartsFound);
+	  //ensure(reason == kMemSearchExitReason_SomePartsFound);
+	  ensure(strcmp(res, "") == 0);
+	  printf("\n");
+  }
+  
+  if (testsFailed == 0) {
+    puts("All tests passed.");
+  }
+  else {
+    printf("%zu test(s) failed.\n", testsFailed);
+  }
   return 0;
 }

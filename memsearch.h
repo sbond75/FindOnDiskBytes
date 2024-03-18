@@ -12,7 +12,8 @@ enum MemSearchExitReason {
 };
 
 // Extended version of `memsearch`.
-// Call and if it returns Found, re-run with the return value as the haystack (and subtract haystackSize by `(retval - haystack)`) until it returns needle ran out or no parts found.
+// The strings are optionally null terminated.
+// Call and if it returns Found, re-run with {the return value + needleLen} as the haystack (and subtract haystackSize by `-(retval - haystack) + strlen(needle)`) until it returns needle ran out or no parts found.
 extern const char* memsearch_ext(const char* haystack, size_t haystackSize, const char* needle, size_t needleLen, int* out_memSearchExitReason, const char** needleNext);
 
 // strstr but can handle haystacks that aren't limited to null termination. Useful when your string
