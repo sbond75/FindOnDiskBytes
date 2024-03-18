@@ -78,6 +78,17 @@ const char* memsearch_ext(const char* haystack, size_t haystackSize, const char*
       	return hayPtr - i;
       }
       else {
+        if ((hayPtr - ((needleNext && *needleNext) ? matchedCharCount_needleNext : matchedCharCount)) == haystack) {
+          // No matches found
+          if (needleNext) {
+            *needleNext = NULL;
+          }
+          if (out_memSearchExitReason) {
+	    *out_memSearchExitReason = kMemSearchExitReason_NoPartsFound;
+          }
+          return haystack;
+        }
+        
         if (needleNext) {
           *needleNext = needlePtr + 1;
         }
@@ -202,6 +213,39 @@ int MAIN_TEST_FN() {
 	  ensure(strcmp(res, "") == 0);
 	  printf("\n");
   }
+  
+  // Like the above but with longer needle string:
+  {
+  	  hay = "The ultimate teesta 1ee2";
+  	  
+  	  needle = "ee";
+	  res = memsearch_ext(hay, strlen(hay), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "eesta 1ee2") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_Found);
+	  ensure(strcmp(res, "ee2") == 0);
+	  printf("\n");
+	  
+	  res = memsearch_ext(res+strlen(needle), strlen(hay) - (res - hay) - strlen(needle), needle, strlen(needle), &reason, &needleNext);
+	  putsN(res);
+	  printf("Reason: %s\n", memsearch_reasonToString(reason));
+	  printf("Needle next: %s\n", needleNext);
+	  ensure(reason == kMemSearchExitReason_NoPartsFound);
+	  //ensure(strcmp(res, "") == 0);
+	  ensure(strcmp(res, "2") == 0);
+	  printf("\n");
+  }
+  
+  // Now try the most advanced form: reading a block and then continuing onto the next one:
   
   if (testsFailed == 0) {
     puts("All tests passed.");
